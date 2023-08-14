@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup, Tag
 from requests import RequestException
 from requests_cache import CachedResponse, CachedSession, OriginalResponse
 
+from constants import ENCODING
 from exceptions import ParserFindTagException
 
 
@@ -13,7 +14,7 @@ def get_response(session: CachedSession, url: str
     """GET-запрос к url."""
     try:
         response = session.get(url)
-        response.encoding = 'utf-8'
+        response.encoding = ENCODING
         return response
     except RequestException:
         logging.exception(

@@ -8,7 +8,8 @@ from requests_cache import CachedSession
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEPS_DOC_URL
+from constants import (BASE_DIR, BS_PARSER, EXPECTED_STATUS, MAIN_DOC_URL,
+                       PDF_A4_ZIP_REGEX, PEPS_DOC_URL, VERSION_STATUS_REGEX)
 from outputs import control_output
 from utils import find_tag, find_tag_by_text, get_response
 
@@ -19,7 +20,7 @@ def whats_new(session: CachedSession) -> Optional[List[Tuple[str, str, str]]]:
     response = get_response(session, whats_new_url)
     if response is None:
         return None
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = BeautifulSoup(response.text, features=BS_PARSER)
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
     sections_by_python = div_with_ul.find_all('li', class_='toctree-l1')
@@ -31,7 +32,7 @@ def whats_new(session: CachedSession) -> Optional[List[Tuple[str, str, str]]]:
         response = get_response(session, version_link)
         if response is None:
             continue
-        soup = BeautifulSoup(response.text, 'lxml')
+        soup = BeautifulSoup(response.text, BS_PARSER)
         h1 = find_tag(soup, 'h1')
         dl = find_tag(soup, 'dl')
         dl_text = dl.text.replace('\n', ' ')
@@ -47,7 +48,7 @@ def latest_versions(session: CachedSession
     response = get_response(session, MAIN_DOC_URL)
     if response is None:
         return None
-    soup = BeautifulSoup(response.text, 'lxml')
+    soup = BeautifulSoup(response.text, BS_PARSER)
     sidebar = find_tag(soup, 'div', attrs={'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
     for ul in ul_tags:
@@ -56,10 +57,9 @@ def latest_versions(session: CachedSession
             break
         raise Exception('Ничего не нашлось')
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
-    pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
-        text_match = re.search(pattern, a_tag.text)
+        text_match = re.search(VERSION_STATUS_REGEX, a_tag.text)
         if text_match:
             version, status = text_match.groups()
         else:
@@ -76,13 +76,13 @@ def download(session: CachedSession) -> None:
     response = get_response(session, downloads_url)
     if response is None:
         return
-    soup = BeautifulSoup(response.text, 'lxml')
+    soup = BeautifulSoup(response.text, BS_PARSER)
     main_tag = find_tag(soup, 'div', attrs={'role': 'main'})
     table_tag = find_tag(main_tag, 'table', attrs={'class': 'docutils'})
     pdf_a4_tag = find_tag(
         table_tag,
         'a',
-        attrs={'href': re.compile(r'.+pdf-a4\.zip$')}
+        attrs={'href': re.compile(PDF_A4_ZIP_REGEX)}
     )
     pdf_a4_link = pdf_a4_tag['href']
     archive_url = urljoin(downloads_url, pdf_a4_link)
@@ -101,7 +101,7 @@ def pep(session: CachedSession) -> Optional[List[Tuple[str, str]]]:
     response = get_response(session, PEPS_DOC_URL)
     if response is None:
         return None
-    soup = BeautifulSoup(response.text, 'lxml')
+    soup = BeautifulSoup(response.text, BS_PARSER)
     section_tag = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
     tbody_tag = find_tag(section_tag, 'tbody')
     tr_tags = tbody_tag.find_all('tr')
@@ -117,7 +117,7 @@ def pep(session: CachedSession) -> Optional[List[Tuple[str, str]]]:
         if response is None:
             continue
         preview_status = abbr_tag.text[1:]
-        soup = BeautifulSoup(response.text, 'lxml')
+        soup = BeautifulSoup(response.text, BS_PARSER)
         dt_tag = find_tag_by_text(soup, 'dt', 'Status')
         dd_tag = dt_tag.find_next_sibling()
         abbr_tag = find_tag(dd_tag, 'abbr')

@@ -1,12 +1,21 @@
 import logging
 from argparse import ArgumentParser
+from enum import Enum
 from logging.handlers import RotatingFileHandler
-from typing import Iterable
+from typing import Iterable, Tuple
 
-from constants import BASE_DIR
+from constants import BASE_DIR, DT_FORMAT, ENCODING, LOG_FORMAT
 
-LOG_FORMAT = '"%(asctime)s - [%(levelname)s] - %(message)s"'
-DT_FORMAT = '%d.%m.%Y %H:%M:%S'
+
+class OutputType(str, Enum):
+    """Допустимые значения для аргумента -o, --output."""
+    PRETTY = 'pretty'
+    FILE = 'file'
+
+    @classmethod
+    def tuple(cls) -> Tuple[str, ...]:
+        """Получить кортеж допустимых значений для аргумента -o, --output."""
+        return tuple(map(lambda key: key.value, cls))
 
 
 def configure_argument_parser(available_modes: Iterable) -> ArgumentParser:
@@ -26,7 +35,7 @@ def configure_argument_parser(available_modes: Iterable) -> ArgumentParser:
     parser.add_argument(
         '-o',
         '--output',
-        choices=('pretty', 'file'),
+        choices=OutputType.tuple(),
         help='Дополнительные способы вывода данных'
     )
     return parser
@@ -38,7 +47,7 @@ def configure_logging() -> None:
     log_dir.mkdir(exist_ok=True)
     log_file = log_dir / 'parser.log'
     rotating_handler = RotatingFileHandler(
-        log_file, maxBytes=10 ** 6, backupCount=5, encoding='utf-8'
+        log_file, maxBytes=10 ** 6, backupCount=5, encoding=ENCODING
     )
     logging.basicConfig(
         datefmt=DT_FORMAT,
